@@ -21,6 +21,6 @@ public class BeerControllerIT {
     void testListBeers() {
         BeerPagedList beerPagedList = restTemplate.getForObject("/api/v1/beer", BeerPagedList.class);
 
-        assertThat(beerPagedList.getContent()).hasSize(32);
+        assertThat(beerPagedList.getContent()).hasSize(3);
     }
 }
