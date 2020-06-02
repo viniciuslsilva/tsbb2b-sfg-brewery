@@ -70,7 +70,7 @@ class BeerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
                 .andExpect(jsonPath("$.id", is(validBeer.getId().toString())))
-                .andExpect(jsonPath("$.beerName", is("Beer1")))
+                .andExpect(jsonPath("$.beerName", is("Beer12")))
                 .andExpect(jsonPath("$.createdDate",
                         is(dateTimeFormatter.format(validBeer.getCreatedDate()))))
                .andReturn();

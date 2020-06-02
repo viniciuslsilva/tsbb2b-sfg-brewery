@@ -1,45 +1,60 @@
-# Java Maven CircleCI 2.0 configuration file
-#
-# Check https://circleci.com/docs/2.0/language-java/ for more details
-#
-version: 2
+# Use the latest 2.1 version of CircleCI pipeline process engine. See: https://circleci.com/docs/2.0/configuration-reference
+version: 2.1
+
+references:
+
+  default_java_container_config: &default_java_container_config
+    docker:
+      - image: circleci/openjdk:11-jdk
+    working_directory: "~/project"
+
 jobs:
-    build:
-        docker:
-            # specify the version you desire here
-            - image: circleci/openjdk:11-browsers-legacy
+  build:
+    <<: *default_java_container_config
+    steps:
+      - checkout # check out source code to working directory
+      - restore_cache: # restore the saved cache after the first run or if `pom.xml` has changed
+          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
+          key: circleci-java-{{ checksum "pom.xml" }}
+      - run: mvn package
+      - save_cache: # saves the project dependencies
+          paths:
+            - ~/.m2
+          key: circleci-java-{{ checksum "pom.xml" }}
 
-            # Specify service dependencies here if necessary
-            # CircleCI maintains a library of pre-built images
-            # documented at https://circleci.com/docs/2.0/circleci-images/
-            # - image: circleci/postgres:9.4
+  test:
+    docker:
+      - image: circleci/openjdk:11-jdk
+    working_directory: "~/project"
+    environment:
+      MAVEN_OPTS: "-Xmx4096m"
 
-        working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          key: circleci-java-{{ checksum "pom.xml" }}
+      - run:
+          name: Install dependencies
+          command: mvn dependency:go-offline
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: circleci-java-{{ checksum "pom.xml" }}
+      - run:
+          name: Run unit tests and integration tests
+          command: mvn integration-test
+      - store_test_results:
+          path: target/surefire-reports
+      - store_artifacts:
+          path: target/tsbb-sfg-brewery-0.0.1-SNAPSHOT.jar
 
-        environment:
-            # Customize the JVM maximum heap limit
-            MAVEN_OPTS: -Xmx3200m
-
-        steps:
-            - checkout
-            # Download and cache dependencies
-            - restore_cache:
-                  keys:
-                      - v1-dependencies-{{ checksum "pom.xml" }}
-                      # fallback to using the latest cache if no exact match is found
-                      - v1-dependencies-
-            - run: mvn dependency:go-offline
-            - save_cache:
-                  paths:
-                      - ~/.m2
-                  key: v1-dependencies-{{ checksum "pom.xml" }}
-            # run tests!
-            - run: mvn integration-test
-
-            - store_test_results: # uploads the test metadata from the `target/surefire-reports` directory so that it can show up in the CircleCI dashboard.
-                # Upload test results for display in Test Summary: https://circleci.com/docs/2.0/collect-test-data/
-                path: target/surefire-reports
-
-            - store_artifacts: # store the uberjar as an artifact
-                # Upload test summary for display in Artifacts: https://circleci.com/docs/2.0/artifacts/
-                path: target/tsbb-sfg-brewery-0.0.1-SNAPSHOT.jar
+workflows:
+  version: 2
+  ci:
+    jobs:
+      - test:
+          name: test-dev
+      - build:
+          name: build-dev
+          requires:
+            - test-dev
